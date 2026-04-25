@@ -1,0 +1,60 @@
+name: SFload_Bot_Speaker
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  speak:
+    if: github.event.comment.user.login != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Executar Java e Capturar Prints
+        id: sfload_logic
+        env:
+          USER_MSG: ${{ github.event.comment.body }}
+        run: |
+          # Roda o java e salva o log
+          java chat.java > log.txt
+          
+          # Extrai o texto e a ação dos prints do Java
+          TEXTO=$(grep "BOT_TEXT:" log.txt | sed 's/BOT_TEXT://')
+          ACAO=$(grep "BOT_ACTION:" log.txt | sed 's/BOT_ACTION://')
+          
+          # Passa para o ambiente do GitHub
+          echo "FINAL_TEXT=$TEXTO" >> $GITHUB_ENV
+          echo "FINAL_ACTION=$ACAO" >> $GITHUB_ENV
+
+      - name: Bot agindo no Chat
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { FINAL_TEXT, FINAL_ACTION } = process.env;
+
+            // O Bot posta no comentário exatamente o que o Java printou
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: FINAL_TEXT
+            });
+
+            // Se o Java printou CLOSE, o Bot encerra a conversa na hora
+            if (FINAL_ACTION.trim() === 'CLOSE') {
+              await github.rest.issues.update({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'closed'
+              });
+            }
+            

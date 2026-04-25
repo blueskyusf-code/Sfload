@@ -1,4 +1,4 @@
-name: SFload_IA_Dynamic
+name: SFload_Processor
 on:
   issue_comment:
     types: [created]
@@ -6,44 +6,42 @@ on:
 permissions:
   contents: write
   issues: write
+  pull-requests: write
 
 jobs:
-  ia_thinking:
+  executar_logica:
     runs-on: ubuntu-latest
     if: github.event.comment.user.login != 'github-actions[bot]'
     steps:
-      - name: Processamento Cognitivo (Bash)
-        id: brain
+      - name: Checkout do código
+        uses: actions/checkout@v3
+
+      - name: Processamento de Dados
+        id: proc
         run: |
-          # 1. Captura a entrada
-          USER_MSG=$(echo "${{ github.event.comment.body }}" | tr '[:upper:]' '[:lower:]')
+          # 1. Pega a entrada do App
+          INPUT="${{ github.event.comment.body }}"
           
-          # 2. Banco de ideias (Arrays)
-          GREETINGS=("Olá!" "Saudações, mestre." "Oi, estou online." "SFload ativado!")
-          ADJECTIVES=("interessante" "curioso" "importante" "relevante")
-          ACTIONS=("vou processar isso agora." "estou analisando os dados." "anotei sua observação." "isso muda tudo.")
+          echo "Processando: $INPUT"
 
-          # 3. Lógica de "Pensamento"
-          # Seleciona um item aleatório de cada array para criar frases novas
-          RAND_GREET=${GREETINGS[$RANDOM % ${#GREETINGS[@]}]}
-          RAND_ADJ=${ADJECTIVES[$RANDOM % ${#ADJECTIVES[@]}]}
-          RAND_ACT=${ACTIONS[$RANDOM % ${#ACTIONS[@]}]}
+          # 2. EXEMPLO DE PROCESSAMENTO: 
+          # Aqui você pode colocar qualquer comando Bash ou Python.
+          # Vamos supor que ele conte caracteres e inverta o texto:
+          CONTAGEM=$(echo -n "$INPUT" | wc -c)
+          INVERTIDO=$(echo "$INPUT" | rev)
+          
+          # 3. Monta o Log de Saída
+          echo "RESULTADO<<EOF" >> $GITHUB_ENV
+          echo "--- RELATÓRIO DE PROCESSAMENTO ---" >> $GITHUB_ENV
+          echo "📥 ENTRADA: $INPUT" >> $GITHUB_ENV
+          echo "📊 BYTES: $CONTAGEM" >> $GITHUB_ENV
+          echo "🔄 REVERSO: $INVERTIDO" >> $GITHUB_ENV
+          echo "✅ STATUS: Concluído com sucesso." >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
-          # 4. Decisão baseada no input
-          if [[ "$USER_MSG" == *"ajuda"* ]]; then
-              FINAL_MSG="🆘 Você pediu ajuda. $RAND_GREET Meu sistema diz que seu pedido é $RAND_ADJ e $RAND_ACT"
-          elif [[ "$USER_MSG" == *"sistema"* ]]; then
-              FINAL_MSG="🖥️ Status do core: Estável. $RAND_GREET O log atual é $RAND_ADJ. Relatório: $RAND_ACT"
-          else
-              # Mensagem 100% dinâmica se não houver comando
-              FINAL_MSG="$RAND_GREET Percebi algo $RAND_ADJ na sua mensagem. Por favor, aguarde enquanto $RAND_ACT"
-          fi
-
-          echo "BOT_RESPONSE=$FINAL_MSG" >> $GITHUB_ENV
-
-      - name: Responder no Chat
+      - name: Devolver Resultado ao App
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "$BOT_RESPONSE"
+          gh issue comment ${{ github.event.issue.number }} --body "$RESULTADO"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           

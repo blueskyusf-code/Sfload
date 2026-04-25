@@ -1,68 +1,33 @@
-name: SFload_Bot_Responder
-
-on:
-  issue_comment:
-    types: [created]
-
-permissions:
-  issues: write
-  contents: read
-
-jobs:
-  respond:
-    # Impede que o bot responda a si mesmo
-    if: github.event.comment.user.login != 'github-actions[bot]'
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Processar e Capturar Resposta
-        id: engine
-        env:
-          USER_MSG: ${{ github.event.comment.body }}
+      - name: Processar com Java
+        id: processor
         run: |
-          # Executa o Java e salva os prints
-          java chat.java > output.txt
+          javac chat.java
+          # Executa o java e guarda o resultado bruto
+          RAW_OUT=$(java chat "${{ github.event.comment.body }}")
           
-          # Extrai a mensagem e o status dos prints do Java
-          # Usamos o 'sed' para pegar tudo que vem depois de 'RESPOSTA:'
-          MSG_FINAL=$(grep "RESPOSTA:" output.txt | sed 's/RESPOSTA://')
-          STATUS_FINAL=$(grep "STATUS:" output.txt | sed 's/STATUS://')
+          # Separa o tipo de ação e o conteúdo usando o pipe | como divisor
+          ACTION_TYPE=$(echo $RAW_OUT | cut -d':' -f1)
+          CONTENT=$(echo $RAW_OUT | cut -d'|' -f2)
+          TITLE=$(echo $RAW_OUT | cut -d'|' -f2) # Usado apenas se for criar issue
+          DESC=$(echo $RAW_OUT | cut -d'|' -f3)  # Usado apenas se for criar issue
+
+          # Salva para os próximos steps usarem
+          echo "type=$ACTION_TYPE" >> $GITHUB_OUTPUT
+          echo "msg=$CONTENT" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "desc=$DESC" >> $GITHUB_OUTPUT
+
+      - name: Ação - Comentar na Issue
+        if: contains(steps.processor.outputs.type, 'COMMENT')
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body "${{ steps.processor.outputs.msg }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ação - Criar Nova Issue (Alerta)
+        if: contains(steps.processor.outputs.type, 'CREATE_ISSUE')
+        run: |
+          gh issue create --title "${{ steps.processor.outputs.title }}" --body "${{ steps.processor.outputs.desc }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
-          # Salva nas variáveis de ambiente do GitHub
-          echo "BOT_MSG=$MSG_FINAL" >> $GITHUB_ENV
-          echo "BOT_STATUS=$STATUS_FINAL" >> $GITHUB_ENV
-
-      - name: Bot Respondendo no GitHub
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const body = process.env.BOT_MSG;
-            const status = process.env.BOT_STATUS;
-
-            // O BOT RESPONDE AQUI:
-            await github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body.trim()
-            });
-
-            // Se o Java mandou fechar por causa de insultos:
-            if (status.trim() === 'OFF') {
-              await github.rest.issues.update({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                state: 'closed'
-              });
-            }
-            

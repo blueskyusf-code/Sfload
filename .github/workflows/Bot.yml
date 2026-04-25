@@ -1,13 +1,19 @@
-name: SFload_Bot_Speaker
+name: SFload_Bot_Responder
 
 on:
   issue_comment:
     types: [created]
 
+permissions:
+  issues: write
+  contents: read
+
 jobs:
-  speak:
+  respond:
+    # Impede que o bot responda a si mesmo
     if: github.event.comment.user.login != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,38 +24,40 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Executar Java e Capturar Prints
-        id: sfload_logic
+      - name: Processar e Capturar Resposta
+        id: engine
         env:
           USER_MSG: ${{ github.event.comment.body }}
         run: |
-          # Roda o java e salva o log
-          java chat.java > log.txt
+          # Executa o Java e salva os prints
+          java chat.java > output.txt
           
-          # Extrai o texto e a ação dos prints do Java
-          TEXTO=$(grep "BOT_TEXT:" log.txt | sed 's/BOT_TEXT://')
-          ACAO=$(grep "BOT_ACTION:" log.txt | sed 's/BOT_ACTION://')
+          # Extrai a mensagem e o status dos prints do Java
+          # Usamos o 'sed' para pegar tudo que vem depois de 'RESPOSTA:'
+          MSG_FINAL=$(grep "RESPOSTA:" output.txt | sed 's/RESPOSTA://')
+          STATUS_FINAL=$(grep "STATUS:" output.txt | sed 's/STATUS://')
           
-          # Passa para o ambiente do GitHub
-          echo "FINAL_TEXT=$TEXTO" >> $GITHUB_ENV
-          echo "FINAL_ACTION=$ACAO" >> $GITHUB_ENV
+          # Salva nas variáveis de ambiente do GitHub
+          echo "BOT_MSG=$MSG_FINAL" >> $GITHUB_ENV
+          echo "BOT_STATUS=$STATUS_FINAL" >> $GITHUB_ENV
 
-      - name: Bot agindo no Chat
+      - name: Bot Respondendo no GitHub
         uses: actions/github-script@v6
         with:
           script: |
-            const { FINAL_TEXT, FINAL_ACTION } = process.env;
+            const body = process.env.BOT_MSG;
+            const status = process.env.BOT_STATUS;
 
-            // O Bot posta no comentário exatamente o que o Java printou
+            // O BOT RESPONDE AQUI:
             await github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: FINAL_TEXT
+              body: body.trim()
             });
 
-            // Se o Java printou CLOSE, o Bot encerra a conversa na hora
-            if (FINAL_ACTION.trim() === 'CLOSE') {
+            // Se o Java mandou fechar por causa de insultos:
+            if (status.trim() === 'OFF') {
               await github.rest.issues.update({
                 issue_number: context.issue.number,
                 owner: context.repo.owner,

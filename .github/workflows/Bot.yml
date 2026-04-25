@@ -1,33 +1,31 @@
-      - name: Processar com Java
-        id: processor
+name: SFload_Bot_Responder
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  responder:
+    runs-on: ubuntu-latest
+    if: github.event.comment.user.login != 'github-actions[bot]'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Compilar e Executar
         run: |
           javac chat.java
-          # Executa o java e guarda o resultado bruto
-          RAW_OUT=$(java chat "${{ github.event.comment.body }}")
-          
-          # Separa o tipo de ação e o conteúdo usando o pipe | como divisor
-          ACTION_TYPE=$(echo $RAW_OUT | cut -d':' -f1)
-          CONTENT=$(echo $RAW_OUT | cut -d'|' -f2)
-          TITLE=$(echo $RAW_OUT | cut -d'|' -f2) # Usado apenas se for criar issue
-          DESC=$(echo $RAW_OUT | cut -d'|' -f3)  # Usado apenas se for criar issue
+          # Passa o comentário para o Java e salva a saída
+          RESPOSTA=$(java chat "${{ github.event.comment.body }}")
+          echo "RESPOSTA_BOT=$RESPOSTA" >> $GITHUB_ENV
 
-          # Salva para os próximos steps usarem
-          echo "type=$ACTION_TYPE" >> $GITHUB_OUTPUT
-          echo "msg=$CONTENT" >> $GITHUB_OUTPUT
-          echo "title=$TITLE" >> $GITHUB_OUTPUT
-          echo "desc=$DESC" >> $GITHUB_OUTPUT
-
-      - name: Ação - Comentar na Issue
-        if: contains(steps.processor.outputs.type, 'COMMENT')
+      - name: Postar no Chat
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "${{ steps.processor.outputs.msg }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ação - Criar Nova Issue (Alerta)
-        if: contains(steps.processor.outputs.type, 'CREATE_ISSUE')
-        run: |
-          gh issue create --title "${{ steps.processor.outputs.title }}" --body "${{ steps.processor.outputs.desc }}"
+          gh issue comment ${{ github.event.issue.number }} --body "$RESPOSTA_BOT"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           

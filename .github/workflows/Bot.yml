@@ -1,4 +1,4 @@
-name: SFload_Bot_Responder
+name: SFload_IA_Dynamic
 on:
   issue_comment:
     types: [created]
@@ -6,26 +6,44 @@ on:
 permissions:
   contents: write
   issues: write
-  pull-requests: write
 
 jobs:
-  responder:
+  ia_thinking:
     runs-on: ubuntu-latest
     if: github.event.comment.user.login != 'github-actions[bot]'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Compilar e Executar
+      - name: Processamento Cognitivo (Bash)
+        id: brain
         run: |
-          javac chat.java
-          # Passa o comentário para o Java e salva a saída
-          RESPOSTA=$(java chat "${{ github.event.comment.body }}")
-          echo "RESPOSTA_BOT=$RESPOSTA" >> $GITHUB_ENV
+          # 1. Captura a entrada
+          USER_MSG=$(echo "${{ github.event.comment.body }}" | tr '[:upper:]' '[:lower:]')
+          
+          # 2. Banco de ideias (Arrays)
+          GREETINGS=("Olá!" "Saudações, mestre." "Oi, estou online." "SFload ativado!")
+          ADJECTIVES=("interessante" "curioso" "importante" "relevante")
+          ACTIONS=("vou processar isso agora." "estou analisando os dados." "anotei sua observação." "isso muda tudo.")
 
-      - name: Postar no Chat
+          # 3. Lógica de "Pensamento"
+          # Seleciona um item aleatório de cada array para criar frases novas
+          RAND_GREET=${GREETINGS[$RANDOM % ${#GREETINGS[@]}]}
+          RAND_ADJ=${ADJECTIVES[$RANDOM % ${#ADJECTIVES[@]}]}
+          RAND_ACT=${ACTIONS[$RANDOM % ${#ACTIONS[@]}]}
+
+          # 4. Decisão baseada no input
+          if [[ "$USER_MSG" == *"ajuda"* ]]; then
+              FINAL_MSG="🆘 Você pediu ajuda. $RAND_GREET Meu sistema diz que seu pedido é $RAND_ADJ e $RAND_ACT"
+          elif [[ "$USER_MSG" == *"sistema"* ]]; then
+              FINAL_MSG="🖥️ Status do core: Estável. $RAND_GREET O log atual é $RAND_ADJ. Relatório: $RAND_ACT"
+          else
+              # Mensagem 100% dinâmica se não houver comando
+              FINAL_MSG="$RAND_GREET Percebi algo $RAND_ADJ na sua mensagem. Por favor, aguarde enquanto $RAND_ACT"
+          fi
+
+          echo "BOT_RESPONSE=$FINAL_MSG" >> $GITHUB_ENV
+
+      - name: Responder no Chat
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "$RESPOSTA_BOT"
+          gh issue comment ${{ github.event.issue.number }} --body "$BOT_RESPONSE"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           

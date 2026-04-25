@@ -1,4 +1,4 @@
-name: SFload_Logic_Complete
+name: SFload_Java_Engine
 on:
   issue_comment:
     types: [created]
@@ -8,42 +8,19 @@ permissions:
   issues: write
 
 jobs:
-  logic_engine:
+  java_process:
     runs-on: ubuntu-latest
     if: github.event.comment.user.login != 'github-actions[bot]'
     steps:
-      - name: Processamento e Reflexão
+      - uses: actions/checkout@v3
+      - name: Rodar Cérebro Java
         run: |
-          # 1. Entrada e Inversão
-          RAW_MSG="${{ github.event.comment.body }}"
-          REVERSED=$(echo "$RAW_MSG" | rev)
-          FIRST_WORD=$(echo "$RAW_MSG" | awk '{print $1}' | sed 's/[^a-zA-Z0-9]//g')
-
-          # 2. Quebra-cabeça de frases
-          PART1=("Interessante sua escolha de '$FIRST_WORD'..." "Sobre '$FIRST_WORD', os dados dizem muito..." "Sistema focado em '$FIRST_WORD' ativado.")
-          PART2=("O espelho da sua mensagem é: $REVERSED." "Invertendo a lógica, temos: $REVERSED.")
+          javac chat.java
+          # Passa o comentário como argumento para o Java
+          RESULTADO=$(java chat "${{ github.event.comment.body }}")
           
-          F1=${PART1[$RANDOM % ${#PART1[@]}]}
-          F2=${PART2[$RANDOM % ${#PART2[@]}]}
-
-          # 3. A "Reflexão" (O que ele acha da resposta)
-          # Aqui ele analisa o tamanho ou o conteúdo para comentar no final
-          MSG_LEN=${#RAW_MSG}
-          
-          if [ "$MSG_LEN" -lt 5 ]; then
-             OPINION="Sua mensagem foi curta, mas o impacto lógico foi alto. ⚡"
-          elif [[ "$RAW_MSG" == *"?"* ]]; then
-             OPINION="Notei um tom de dúvida. Talvez a resposta esteja no reverso acima. 🤔"
-          else
-             OPINION="Essa estrutura me parece sólida. O quebra-cabeça faz sentido agora. 🧩"
-          fi
-
-          # 4. Montagem Final
-          FINAL_RESPONSE="**[PROCESSAMENTO]**\n$F1\n\n**[REVERSO]**\n$F2\n\n**[REFLEXÃO DO BOT]**\n$OPINION"
-          
-          # Salva para postar
           echo "FINAL_MSG<<EOF" >> $GITHUB_ENV
-          echo -e "$FINAL_RESPONSE" >> $GITHUB_ENV
+          echo -e "$RESULTADO" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Postar no App

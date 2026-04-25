@@ -1,17 +1,18 @@
-public class Chat {
+public class chat {
     public static void main(String[] args) {
-        String input = System.getenv("USER_MSG");
-        if (input == null || input.isEmpty()) return;
+        if (args.length == 0) return;
+        String msg = args[0].toLowerCase().trim();
 
-        String msg = input.toLowerCase();
-
-        // LÓGICA DE CONSCIÊNCIA
-        if (msg.contains("insulto") || msg.contains("ofensa")) {
-            System.out.println("STATUS:OFF");
-            System.out.println("RESPOSTA:O SFload preza pelo respeito! 🌟 Infelizmente, não posso continuar essa conversa. Chat encerrado. 🛑");
-        } else {
-            System.out.println("STATUS:ON");
-            System.out.println("RESPOSTA:Oie! ✨ O SFload recebeu sua mensagem e está radiante! Vamos brilhar juntos! 🚀🌟");
+        // Se a mensagem contiver "alerta", o comando será CREATE_ISSUE
+        if (msg.contains("alerta")) {
+            System.out.println("ACTION:CREATE_ISSUE|Alerta de Sistema|Um usuário enviou um alerta pelo App!");
+        } 
+        // Se for uma mensagem normal
+        else if (msg.contains("oi")) {
+            System.out.println("ACTION:COMMENT|Olá! Eu sou o SFload, como posso ajudar?");
+        }
+        else {
+            System.out.println("ACTION:COMMENT|Comando não reconhecido, mas recebi sua mensagem!");
         }
     }
 }

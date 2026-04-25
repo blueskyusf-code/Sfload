@@ -1,4 +1,4 @@
-name: SFload_Processor
+name: SFload_Logic_Engine
 on:
   issue_comment:
     types: [created]
@@ -6,42 +6,45 @@ on:
 permissions:
   contents: write
   issues: write
-  pull-requests: write
 
 jobs:
-  executar_logica:
+  brain_process:
     runs-on: ubuntu-latest
     if: github.event.comment.user.login != 'github-actions[bot]'
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v3
-
-      - name: Processamento de Dados
-        id: proc
+      - name: Pensar e Montar Quebra-Cabeça
         run: |
-          # 1. Pega a entrada do App
-          INPUT="${{ github.event.comment.body }}"
+          # 1. Obter a mensagem original
+          RAW_MSG="${{ github.event.comment.body }}"
           
-          echo "Processando: $INPUT"
+          # 2. Inverter a mensagem (Processamento 1)
+          REVERSED=$(echo "$RAW_MSG" | rev)
+          
+          # 3. Extrair a primeira palavra (Processamento 2)
+          # Pega a primeira palavra e remove símbolos extras
+          FIRST_WORD=$(echo "$RAW_MSG" | awk '{print $1}' | sed 's/[^a-zA-Z0-9]//g')
 
-          # 2. EXEMPLO DE PROCESSAMENTO: 
-          # Aqui você pode colocar qualquer comando Bash ou Python.
-          # Vamos supor que ele conte caracteres e inverta o texto:
-          CONTAGEM=$(echo -n "$INPUT" | wc -c)
-          INVERTIDO=$(echo "$INPUT" | rev)
+          # 4. Banco de Frases (O Quebra-Cabeça)
+          PART1=("Interessante você começar com '$FIRST_WORD'..." "Analisei sua entrada sobre '$FIRST_WORD'..." "Sistema focado em '$FIRST_WORD' iniciado.")
+          PART2=("O reflexo invertido disso seria: $REVERSED." "No espelho dos dados, leio: $REVERSED." "A cifra reversa resultou em: $REVERSED.")
+          PART3=("Isso abre novas possibilidades! 🚀" "Processamento concluído com sucesso. 🟢" "Aguardando próxima instrução lógica. 🤖")
+
+          # 5. Misturar as peças (Sorteio aleatório)
+          F1=${PART1[$RANDOM % ${#PART1[@]}]}
+          F2=${PART2[$RANDOM % ${#PART2[@]}]}
+          F3=${PART3[$RANDOM % ${#PART3[@]}]}
+
+          # 6. Montar a resposta final
+          FINAL_RESPONSE="$F1\n\n$F2\n\n$F3"
           
-          # 3. Monta o Log de Saída
-          echo "RESULTADO<<EOF" >> $GITHUB_ENV
-          echo "--- RELATÓRIO DE PROCESSAMENTO ---" >> $GITHUB_ENV
-          echo "📥 ENTRADA: $INPUT" >> $GITHUB_ENV
-          echo "📊 BYTES: $CONTAGEM" >> $GITHUB_ENV
-          echo "🔄 REVERSO: $INVERTIDO" >> $GITHUB_ENV
-          echo "✅ STATUS: Concluído com sucesso." >> $GITHUB_ENV
+          # Exportar para o ambiente
+          echo "FINAL_MSG<<EOF" >> $GITHUB_ENV
+          echo -e "$FINAL_RESPONSE" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Devolver Resultado ao App
+      - name: Postar no App
         run: |
-          gh issue comment ${{ github.event.issue.number }} --body "$RESULTADO"
+          gh issue comment ${{ github.event.issue.number }} --body "$FINAL_MSG"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           
